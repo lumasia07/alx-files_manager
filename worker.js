@@ -5,6 +5,7 @@ const { ObjectId } = require('mongodb');
 const dbClient = require('./utils/db');
 
 const fileQueue = new Bull('fileQueue');
+const userQueue = new Bull('userQueue');
 
 fileQueue.process(async (job) => {
   const { userId, fileId } = job.data;
@@ -32,4 +33,20 @@ fileQueue.process(async (job) => {
   }
 });
 
-module.exports = fileQueue;
+userQueue.process(async (job) => {
+  const { userId } = job.data;
+
+  if (!userId) {
+    throw new Error('Missing userId');
+  }
+
+  const user = await dbClient.getUserById(userId);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  console.log(`Welcome ${user.email}!`);
+});
+
+module.exports = { fileQueue, userQueue };
