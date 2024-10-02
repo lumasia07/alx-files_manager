@@ -1,9 +1,12 @@
 const { v4: uuidv4 } = require('uuid');
+const Bull = require('bull');
 const fs = require('fs');
 const path = require('path');
 const mime = require('mime-types');
 const redisClient = require('../utils/redis');
 const dbClient = require('../utils/db');
+
+const fileQueue = new Bull('fileQueue');
 
 class FilesController {
   static async postUpload(req, res) {
@@ -80,6 +83,15 @@ class FilesController {
     };
 
     const insertedFile = await dbClient.addFile(newFile);
+
+    // Enqueue image files for processing
+    if (type === 'image') {
+      fileQueue.add({
+        userId: insertedFile.userId,
+        fileId: insertedFile._id,
+      });
+    }
+
     return res.status(201).json(insertedFile);
   }
 
